@@ -1,0 +1,21 @@
+[project]
+name = "comfyui-videoframenode" # Unique identifier for your node. Immutable after creation in the Registry.
+description = "ComfyUI custom node: load an MP4 and output first/last frame as IMAGE."
+version = "1.0.0" # Must be semver.
+license = { file = "LICENSE.txt" }
+# Registry/Manager will fill this from requirements.txt during publishing in many workflows,
+# but keeping it explicit helps for tooling.
+dependencies = [
+  "opencv-python",
+  "imageio[ffmpeg]",
+  "torch",
+]
+
+[project.urls]
+Repository = "https://github.com/REPLACE_ME/ComfyUI_VideoFrameNode"
+
+[tool.comfy]
+# Fill this with your publisher id from https://registry.comfy.org (the part after '@' on your profile).
+PublisherId = "video-frame-node"
+DisplayName = "VideoFrameNode"
+Icon = "" # Optional URL to an icon (PNG/JPG/GIF/SVG)

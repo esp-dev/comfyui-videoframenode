@@ -1,4 +1,4 @@
-# VideoFrameNode (ComfyUI)
+# comfyui-videoframenode (ComfyUI)
 
 Custom node for ComfyUI that loads an MP4 video and outputs two images:
 
@@ -9,7 +9,9 @@ Custom node for ComfyUI that loads an MP4 video and outputs two images:
 
 1. Copy/clone this repo folder into your ComfyUI:
 
-    - `ComfyUI/custom_nodes/VideoFrameNode` (this repo root is the node folder)
+    - `ComfyUI/custom_nodes/comfyui-videoframenode` (this repo root is the node folder)
+
+    Note: the folder name can be different, but ComfyUI-Manager/Registry installs typically use the project name.
 
 2. Install dependencies:
 
@@ -23,7 +25,7 @@ Custom node for ComfyUI that loads an MP4 video and outputs two images:
 
 ## Publishing / Compatibility notes
 
-- This repo includes `pyproject.toml` for Comfy Registry / ComfyUI-Manager publishing. Fill in `PublisherId` and `Repository` before publishing.
+- This repo includes `pyproject.toml` for Comfy Registry / ComfyUI-Manager publishing. Fill in `PublisherId` before publishing.
 - Versioning: follow SemVer. Changing node identifiers, input names, output names, or types should be treated as a breaking change.
 - Security: no `eval/exec`, no runtime `pip install` from within the node.
 - API-mode: the core node works in API mode, but the drag&drop upload feature is UI-only (it adds a custom upload route + frontend JS).

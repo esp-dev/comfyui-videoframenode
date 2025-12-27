@@ -12,10 +12,10 @@ dependencies = [
 ]
 
 [project.urls]
-Repository = "https://github.com/REPLACE_ME/ComfyUI_VideoFrameNode"
+Repository = "https://github.com/esp-dev/comfyui-videoframenode"
 
 [tool.comfy]
 # Fill this with your publisher id from https://registry.comfy.org (the part after '@' on your profile).
 PublisherId = "video-frame-node"
-DisplayName = "VideoFrameNode"
+DisplayName = "comfyui-videoframenode"
 Icon = "" # Optional URL to an icon (PNG/JPG/GIF/SVG)

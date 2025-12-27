@@ -16,6 +16,6 @@ Repository = "https://github.com/esp-dev/comfyui-videoframenode"
 
 [tool.comfy]
 # Fill this with your publisher id from https://registry.comfy.org (the part after '@' on your profile).
-PublisherId = "video-frame-node"
+PublisherId = "szymonj"
 DisplayName = "comfyui-videoframenode"
 Icon = "" # Optional URL to an icon (PNG/JPG/GIF/SVG)

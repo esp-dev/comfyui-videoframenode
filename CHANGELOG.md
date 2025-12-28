@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.1
+
+- Add project icon (1024 and 256) and set Registry icon URL.
+- Registry metadata cleanup (PublisherId, repo rename links).
+
 ## 1.0.0
 
 - Initial release.

@@ -1,4 +1,6 @@
 opencv-python
 imageio[ffmpeg]
-torch
+# torch is typically already provided by ComfyUI (often as a CUDA-specific build, e.g. torch-cu130).
+# Installing plain `torch` via pip can override the CUDA build and break GPU acceleration.
+# torch
 

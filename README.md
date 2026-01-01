@@ -1,49 +1,71 @@
 # comfyui-videoframenode (ComfyUI)
 
-Custom node for ComfyUI that loads an MP4 video and outputs two images:
+![VideoFrameNode icon](./icon-256.png)
+
+Custom node for ComfyUI that loads an `.mp4` video and outputs two images:
 
 - first frame
 - last frame
 
-## Install
+## What this node does
 
-1. Copy/clone this repo folder into your ComfyUI:
+- Reads a video file from `ComfyUI/input` (by filename) or from an absolute path.
+- Outputs two `IMAGE` values: `FIRST_FRAME` and `LAST_FRAME`.
+- Supports drag & drop of an `.mp4` directly onto the node (UI feature).
+
+## How to use
+
+1. Add the node **Video: First & Last Frame** to your graph.
+2. Provide the input video using one of these methods:
+    - Set `video` to a filename from `ComfyUI/input`.
+    - Set `video` to an absolute path to an `.mp4` file.
+    - (UI) Drag & drop an `.mp4` onto the node. It will upload into `ComfyUI/input` and set `video` automatically.
+3. Execute the graph.
+4. Use outputs `FIRST_FRAME` and `LAST_FRAME` (both are ComfyUI `IMAGE`).
+
+### Notes (API mode)
+
+- The core node works in API mode, but drag & drop is UI-only (it adds an upload route + frontend JS).
+
+## Install via ComfyUI-Manager (recommended)
+
+1. In the ComfyUI, open **Manager**.
+2. Install this node from the list (search by repo name) or paste the repo URL.
+3. Restart ComfyUI after installation.
+
+## Manual install (advanced users)
+
+The recommended way to install is via ComfyUI-Manager. Manual install is best treated as a fallback.
+
+1. Copy/clone this repo into `ComfyUI/custom_nodes/`, for example:
 
     - `ComfyUI/custom_nodes/comfyui-videoframenode` (this repo root is the node folder)
 
-    Note: the folder name can be different, but ComfyUI-Manager/Registry installs typically use the project name.
+2. Run commands inside the same Python environment that ComfyUI uses (usually ComfyUI's venv):
 
-2. Install dependencies:
+    Windows (PowerShell):
 
-    - `pip install -r requirements.txt`
+    - Activate venv (example): `& "D:\\ComfyUI\\.venv\\Scripts\\Activate.ps1"`
+
+        Note: Windows often blocks running `.ps1` scripts by default.
+
+        - Option A (temporary for this shell only): `Set-ExecutionPolicy -ExecutionPolicy Unrestricted -Scope Process -Force`
+            (This applies only to the current PowerShell process; closing the terminal reverts it.)
+        - Option B: use the `.bat` activator instead (works well from CMD): `"D:\\ComfyUI\\.venv\\Scripts\\activate.bat"`
+
+    - Check what's already installed (recommended before installing anything):
+        - `python -m pip show opencv-python imageio`
+        - `python -c "import cv2, imageio; print('cv2', cv2.__version__, 'imageio', imageio.__version__)"`
+        - (optional) `python -m pip list | findstr /i "opencv imageio torch"`
+
+    - Install deps: `pip install -r requirements.txt`
 
     Note about `torch` / Pylance
 
-        This node uses `torch` because ComfyUI images are `torch.Tensor`. If Pylance shows `Import "torch" could not be resolved`, install dependencies from `requirements.txt`.
+    - This node uses `torch` because ComfyUI images are `torch.Tensor`.
+    - `torch` is usually already included with ComfyUI, so you typically don't need to install it separately.
+    - ComfyUI commonly uses a CUDA-specific build (for example `torch-cu130`). Installing the plain `torch` package via `pip` can override the working CUDA build and break GPU acceleration.
+    - For that reason, `torch` is intentionally commented out in `requirements.txt` in this repo.
+    - If Pylance shows `Import "torch" could not be resolved`, make sure VS Code is using the same environment (venv) as ComfyUI.
 
 3. Restart ComfyUI.
-
-## Publishing / Compatibility notes
-
-- This repo includes `pyproject.toml` for Comfy Registry / ComfyUI-Manager publishing. Fill in `PublisherId` before publishing.
-- Versioning: follow SemVer. Changing node identifiers, input names, output names, or types should be treated as a breaking change.
-- Security: no `eval/exec`, no runtime `pip install` from within the node.
-- API-mode: the core node works in API mode, but the drag&drop upload feature is UI-only (it adds a custom upload route + frontend JS).
-
-## Publish to Registry (GitHub Actions)
-
-1. Create a Registry publishing API key and add it as a GitHub repo secret named `REGISTRY_ACCESS_TOKEN`.
-2. Ensure `pyproject.toml` has the correct `PublisherId` and `Repository`.
-3. Bump `version` in `pyproject.toml` and push to `main`.
-
-## Node
-
-- Name: **Video: First & Last Frame**
-- Input: `video` (filename in `ComfyUI/input` or an absolute path)
-- Outputs: `FIRST_FRAME`, `LAST_FRAME` (ComfyUI `IMAGE`)
-
-### Drag & drop workflow
-
-1. Drag & drop your `.mp4` directly onto the node.
-2. The file is uploaded into `ComfyUI/input` and the node input is set to the uploaded filename.
-3. The node displays a preview (first frame) after execution.

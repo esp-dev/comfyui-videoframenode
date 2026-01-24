@@ -2,9 +2,10 @@
 
 ## 1.1.0
 
-- Add optional `video_in` input (accepts path-like inputs and IMAGE frame batches).
-- UI: add recent video list + Refresh + Browse/upload button.
-- Add `/videoframenode/recent` endpoint (shows recent MP4 from input/output).
+- Add optional `video_in` input (accepts path-like inputs, dicts with a path/filename, or IMAGE frame batches).
+- UI: add `recent` dropdown + `Refresh` + `Browse…` (uploads into `ComfyUI/input` and sets the `video` widget).
+- Add `/videoframenode/recent` endpoint (shows recent MP4 from `input/` and `output/`).
+- Backwards compatible: `video` STRING still works as before.
 
 ## 1.0.1
 

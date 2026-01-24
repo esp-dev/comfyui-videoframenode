@@ -10,6 +10,11 @@ dependencies = [
   "imageio[ffmpeg]",
 ]
 
+# Note:
+# - `torch` and `numpy` are provided by ComfyUI's Python environment.
+# - They are intentionally NOT listed here to avoid pip/registry workflows overriding
+#   ComfyUI's bundled/CUDA-specific torch build.
+
 [project.urls]
 Repository = "https://github.com/esp-dev/comfyui-videoframenode"
 

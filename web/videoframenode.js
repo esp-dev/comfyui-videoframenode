@@ -3,6 +3,61 @@ import { api } from "../../scripts/api.js";
 
 console.log("[VideoFrameNode] extension loaded");
 
+async function fetchRecentMp4List() {
+  try {
+    const resp = await api.fetchApi("/videoframenode/recent", { method: "GET" });
+    if (!resp.ok) return [];
+    const data = await resp.json();
+    const files = data?.files;
+    return Array.isArray(files) ? files : [];
+  } catch (_) {
+    return [];
+  }
+}
+
+function createHiddenFileInput(accept = ".mp4") {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = accept;
+  input.style.display = "none";
+  document.body.appendChild(input);
+  return input;
+}
+
+let __VideoFrameNodeBrowseInput = null;
+let __VideoFrameNodeBrowseTarget = null;
+
+function getSharedBrowseInput() {
+  if (__VideoFrameNodeBrowseInput) return __VideoFrameNodeBrowseInput;
+
+  const fileInput = createHiddenFileInput(".mp4");
+  fileInput.addEventListener("change", async () => {
+    const node = __VideoFrameNodeBrowseTarget;
+    __VideoFrameNodeBrowseTarget = null;
+    try {
+      const file = fileInput.files?.[0];
+      fileInput.value = "";
+      if (!file || !node) return;
+      if (!file.name?.toLowerCase().endsWith(".mp4")) return;
+
+      const uploadedName = await uploadMp4(file);
+      setNodeVideoValue(node, uploadedName);
+
+      // Refresh recent values if present.
+      const recentWidget = node.widgets?.find((w) => w?.name === "recent");
+      if (recentWidget?.options) {
+        const files = await fetchRecentMp4List();
+        recentWidget.options.values = ["", ...files];
+      }
+    } catch (e) {
+      console.warn("[VideoFrameNode] browse/upload failed", e);
+    }
+  });
+
+  __VideoFrameNodeBrowseInput = fileInput;
+  return fileInput;
+}
+
 async function uploadMp4(file) {
   const formData = new FormData();
   formData.append("file", file, file.name);
@@ -127,6 +182,57 @@ app.registerExtension({
     nodeType.prototype.onNodeCreated = function () {
       const r = origOnNodeCreated?.apply(this, arguments);
 
+      // Add UI helpers: recent list + browse/upload button.
+      // These write into the existing STRING widget named "video".
+      try {
+        // Recent dropdown
+        const recentWidget = this.addWidget(
+          "combo",
+          "recent",
+          "",
+          async (v) => {
+            if (typeof v === "string" && v) setNodeVideoValue(this, v);
+          },
+          { values: [""], serialize: false }
+        );
+
+        const refreshRecent = async () => {
+          const files = await fetchRecentMp4List();
+          const values = ["", ...files];
+          recentWidget.options.values = values;
+          // If current selection no longer exists, reset to empty.
+          if (!values.includes(recentWidget.value)) recentWidget.value = "";
+          this.setDirtyCanvas?.(true, true);
+        };
+
+        // Refresh button
+        this.addWidget(
+          "button",
+          "refresh recent",
+          "Refresh",
+          async () => {
+            await refreshRecent();
+          },
+          { serialize: false }
+        );
+
+        this.addWidget(
+          "button",
+          "browse",
+          "Browse…",
+          () => {
+            __VideoFrameNodeBrowseTarget = this;
+            getSharedBrowseInput().click();
+          },
+          { serialize: false }
+        );
+
+        // Load recent list once.
+        refreshRecent();
+      } catch (e) {
+        console.warn("[VideoFrameNode] failed to add UI widgets", e);
+      }
+
       // Enable dropping an .mp4 file onto the node to upload into ComfyUI/input
       this.onDropFile = async (file) => {
         try {
@@ -138,6 +244,13 @@ app.registerExtension({
           console.log("[VideoFrameNode] node drop, uploading", file.name);
           const uploadedName = await uploadMp4(file);
           setNodeVideoValue(this, uploadedName);
+
+          // Best-effort refresh of recent widget values.
+          const recentWidget = this.widgets?.find((w) => w?.name === "recent");
+          if (recentWidget?.options) {
+            const files = await fetchRecentMp4List();
+            recentWidget.options.values = ["", ...files];
+          }
 
           return true;
         } catch (e) {

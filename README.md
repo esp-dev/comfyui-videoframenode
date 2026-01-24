@@ -10,15 +10,20 @@ Custom node for ComfyUI that loads an `.mp4` video and outputs two images:
 ## What this node does
 
 - Reads a video file from `ComfyUI/input` (by filename) or from an absolute path.
+- Optionally accepts a **wired video input** from another node (`video_in`).
 - Outputs two `IMAGE` values: `FIRST_FRAME` and `LAST_FRAME`.
+- Supports choosing the video from a **recent files list** or via **file picker upload** (UI feature).
 - Supports drag & drop of an `.mp4` directly onto the node (UI feature).
 
 ## How to use
 
 1. Add the node **Video: First & Last Frame** to your graph.
 2. Provide the input video using one of these methods:
+    - Connect `video_in` from another node (if it outputs a path/filename, a dict with a path, or an IMAGE batch of frames).
     - Set `video` to a filename from `ComfyUI/input`.
     - Set `video` to an absolute path to an `.mp4` file.
+    - (UI) Use the `recent` dropdown or `Browse…` to pick an `.mp4` from your computer (it uploads into `ComfyUI/input`).
+            The `recent` list can include entries like `input/your.mp4` and `output/your.mp4`.
     - (UI) Drag & drop an `.mp4` onto the node. It will upload into `ComfyUI/input` and set `video` automatically.
 3. Execute the graph.
 4. Use outputs `FIRST_FRAME` and `LAST_FRAME` (both are ComfyUI `IMAGE`).

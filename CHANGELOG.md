@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.0
+
+- Add optional `video_in` input (accepts path-like inputs and IMAGE frame batches).
+- UI: add recent video list + Refresh + Browse/upload button.
+- Add `/videoframenode/recent` endpoint (shows recent MP4 from input/output).
+
 ## 1.0.1
 
 - Add project icon (1024 and 256) and set Registry icon URL.

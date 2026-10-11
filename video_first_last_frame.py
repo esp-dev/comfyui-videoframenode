@@ -150,6 +150,30 @@ def _extract_video_source(video_in: Any) -> tuple[Optional[str], Optional["torch
     if video_in is None:
         return None, None, None
 
+    # ComfyUI native VIDEO type (comfy_api VideoInput): duck-typed so we don't
+    # need to import comfy_api here. Prefer a file path when available so the
+    # video doesn't have to be fully decoded into memory.
+    get_stream_source = getattr(video_in, "get_stream_source", None)
+    if callable(get_stream_source):
+        try:
+            source = get_stream_source()
+            if isinstance(source, str) and source.strip():
+                return source, None, None
+        except Exception:
+            pass
+
+    get_components = getattr(video_in, "get_components", None)
+    if callable(get_components):
+        try:
+            components = get_components()
+            images = getattr(components, "images", None)
+            import torch
+
+            if isinstance(images, torch.Tensor) and images.ndim == 4 and images.shape[0] >= 1:
+                return None, images[0:1], images[-1:]
+        except Exception:
+            pass
+
     # Many nodes pass a plain path/filename.
     if isinstance(video_in, str):
         return video_in, None, None
@@ -159,7 +183,14 @@ def _extract_video_source(video_in: Any) -> tuple[Optional[str], Optional["torch
         for key in ("path", "fullpath", "filename", "file", "video", "name"):
             v = video_in.get(key)
             if isinstance(v, str) and v.strip():
-                return v, None, None
+                # VHS-style dicts: {filename, subfolder, type} where type is
+                # "input"/"output"/"temp". Build a prefixed path so
+                # _resolve_video_path looks in the right directory.
+                sub = video_in.get("subfolder") or ""
+                typ = (video_in.get("type") or "").strip().lower()
+                prefix = typ if typ in ("input", "output", "temp") else ""
+                joined = "/".join(p for p in (prefix, sub, v) if p)
+                return joined, None, None
         # Sometimes the frames are embedded.
         frames = video_in.get("frames")
         if frames is not None:
@@ -221,6 +252,19 @@ def _save_temp_preview_png(frame_rgb: np.ndarray) -> Optional[dict]:
         Image.fromarray(frame_rgb).save(path)
 
         return {"filename": filename, "subfolder": "", "type": "temp"}
+    except Exception:
+        return None
+
+
+def _save_temp_preview_png_from_tensor(image: "torch.Tensor") -> Optional[dict]:
+    try:
+        import torch
+
+        frame = image
+        if frame.ndim == 4:
+            frame = frame[0]
+        frame = (frame.clamp(0.0, 1.0) * 255.0).round().to(torch.uint8)
+        return _save_temp_preview_png(frame.detach().cpu().numpy())
     except Exception:
         return None
 
@@ -297,6 +341,38 @@ except Exception:
     pass
 
 
+def _get_video_dimensions(video_path: Optional[str], first_tensor: Optional["torch.Tensor"]) -> Tuple[int, int]:
+    """Return (width, height) of the video.
+
+    Prefers the already-decoded frame tensor; falls back to reading the file
+    metadata with OpenCV.
+    """
+    if first_tensor is not None and first_tensor.ndim >= 2:
+        # ComfyUI IMAGE tensor: [..., H, W, C]
+        height = int(first_tensor.shape[-3])
+        width = int(first_tensor.shape[-2])
+        if width > 0 and height > 0:
+            return width, height
+
+    if video_path:
+        try:
+            import cv2  # type: ignore
+
+            cap = cv2.VideoCapture(video_path)
+            try:
+                if cap.isOpened():
+                    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH) or 0)
+                    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT) or 0)
+                    if width > 0 and height > 0:
+                        return width, height
+            finally:
+                cap.release()
+        except ImportError:
+            pass
+
+    raise ValueError("Could not determine video dimensions")
+
+
 class VideoFirstLastFrame:
     @classmethod
     def INPUT_TYPES(cls):
@@ -317,28 +393,40 @@ class VideoFirstLastFrame:
             },
         }
 
-    RETURN_TYPES = ("IMAGE", "IMAGE")
-    RETURN_NAMES = ("FIRST_FRAME", "LAST_FRAME")
+    RETURN_TYPES = ("IMAGE", "IMAGE", "INT", "INT")
+    RETURN_NAMES = ("FIRST_FRAME", "LAST_FRAME", "WIDTH", "HEIGHT")
     FUNCTION = "load"
     CATEGORY = "video"
 
     def load(self, video: str, video_in=None):
         path_from_in, first_tensor, last_tensor = _extract_video_source(video_in)
 
-        if first_tensor is not None and last_tensor is not None:
-            return (first_tensor, last_tensor)
+        if first_tensor is None or last_tensor is None:
+            resolved = path_from_in or (video or "").strip()
+            if not resolved and video_in is not None:
+                raise ValueError(
+                    "video_in was connected but its value could not be interpreted. "
+                    f"Got object of type {type(video_in).__name__!r}. "
+                    "Supported: ComfyUI native VIDEO object, a path/filename string, "
+                    "a dict with path/filename keys, or an IMAGE batch tensor. "
+                    "Alternatively set the 'video' widget to a filename."
+                )
 
-        video_path = _resolve_video_path(path_from_in or video)
-        first_rgb, last_rgb = _read_first_last_frames(video_path)
+            video_path = _resolve_video_path(resolved)
+            first_rgb, last_rgb = _read_first_last_frames(video_path)
+            first_tensor = _to_comfy_image(first_rgb)
+            last_tensor = _to_comfy_image(last_rgb)
 
-        preview = _save_temp_preview_png(first_rgb)
+        width, height = _get_video_dimensions(path_from_in, first_tensor)
+
+        preview = _save_temp_preview_png_from_tensor(first_tensor)
         if preview is not None:
             return {
                 "ui": {"images": [preview]},
-                "result": (_to_comfy_image(first_rgb), _to_comfy_image(last_rgb)),
+                "result": (first_tensor, last_tensor, width, height),
             }
 
-        return (_to_comfy_image(first_rgb), _to_comfy_image(last_rgb))
+        return (first_tensor, last_tensor, width, height)
 
 
 NODE_CLASS_MAPPINGS = {

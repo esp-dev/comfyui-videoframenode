@@ -256,6 +256,19 @@ def _save_temp_preview_png(frame_rgb: np.ndarray) -> Optional[dict]:
         return None
 
 
+def _save_temp_preview_png_from_tensor(image: "torch.Tensor") -> Optional[dict]:
+    try:
+        import torch
+
+        frame = image
+        if frame.ndim == 4:
+            frame = frame[0]
+        frame = (frame.clamp(0.0, 1.0) * 255.0).round().to(torch.uint8)
+        return _save_temp_preview_png(frame.detach().cpu().numpy())
+    except Exception:
+        return None
+
+
 # Expose frontend assets (./web)
 WEB_DIRECTORY = "./web"
 
@@ -328,6 +341,38 @@ except Exception:
     pass
 
 
+def _get_video_dimensions(video_path: Optional[str], first_tensor: Optional["torch.Tensor"]) -> Tuple[int, int]:
+    """Return (width, height) of the video.
+
+    Prefers the already-decoded frame tensor; falls back to reading the file
+    metadata with OpenCV.
+    """
+    if first_tensor is not None and first_tensor.ndim >= 2:
+        # ComfyUI IMAGE tensor: [..., H, W, C]
+        height = int(first_tensor.shape[-3])
+        width = int(first_tensor.shape[-2])
+        if width > 0 and height > 0:
+            return width, height
+
+    if video_path:
+        try:
+            import cv2  # type: ignore
+
+            cap = cv2.VideoCapture(video_path)
+            try:
+                if cap.isOpened():
+                    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH) or 0)
+                    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT) or 0)
+                    if width > 0 and height > 0:
+                        return width, height
+            finally:
+                cap.release()
+        except ImportError:
+            pass
+
+    raise ValueError("Could not determine video dimensions")
+
+
 class VideoFirstLastFrame:
     @classmethod
     def INPUT_TYPES(cls):
@@ -348,38 +393,40 @@ class VideoFirstLastFrame:
             },
         }
 
-    RETURN_TYPES = ("IMAGE", "IMAGE")
-    RETURN_NAMES = ("FIRST_FRAME", "LAST_FRAME")
+    RETURN_TYPES = ("IMAGE", "IMAGE", "INT", "INT")
+    RETURN_NAMES = ("FIRST_FRAME", "LAST_FRAME", "WIDTH", "HEIGHT")
     FUNCTION = "load"
     CATEGORY = "video"
 
     def load(self, video: str, video_in=None):
         path_from_in, first_tensor, last_tensor = _extract_video_source(video_in)
 
-        if first_tensor is not None and last_tensor is not None:
-            return (first_tensor, last_tensor)
+        if first_tensor is None or last_tensor is None:
+            resolved = path_from_in or (video or "").strip()
+            if not resolved and video_in is not None:
+                raise ValueError(
+                    "video_in was connected but its value could not be interpreted. "
+                    f"Got object of type {type(video_in).__name__!r}. "
+                    "Supported: ComfyUI native VIDEO object, a path/filename string, "
+                    "a dict with path/filename keys, or an IMAGE batch tensor. "
+                    "Alternatively set the 'video' widget to a filename."
+                )
 
-        resolved = path_from_in or (video or "").strip()
-        if not resolved and video_in is not None:
-            raise ValueError(
-                "video_in was connected but its value could not be interpreted. "
-                f"Got object of type {type(video_in).__name__!r}. "
-                "Supported: ComfyUI native VIDEO object, a path/filename string, "
-                "a dict with path/filename keys, or an IMAGE batch tensor. "
-                "Alternatively set the 'video' widget to a filename."
-            )
+            video_path = _resolve_video_path(resolved)
+            first_rgb, last_rgb = _read_first_last_frames(video_path)
+            first_tensor = _to_comfy_image(first_rgb)
+            last_tensor = _to_comfy_image(last_rgb)
 
-        video_path = _resolve_video_path(resolved)
-        first_rgb, last_rgb = _read_first_last_frames(video_path)
+        width, height = _get_video_dimensions(path_from_in, first_tensor)
 
-        preview = _save_temp_preview_png(first_rgb)
+        preview = _save_temp_preview_png_from_tensor(first_tensor)
         if preview is not None:
             return {
                 "ui": {"images": [preview]},
-                "result": (_to_comfy_image(first_rgb), _to_comfy_image(last_rgb)),
+                "result": (first_tensor, last_tensor, width, height),
             }
 
-        return (_to_comfy_image(first_rgb), _to_comfy_image(last_rgb))
+        return (first_tensor, last_tensor, width, height)
 
 
 NODE_CLASS_MAPPINGS = {

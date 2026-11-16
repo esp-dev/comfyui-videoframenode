@@ -1,76 +1,62 @@
-# comfyui-videoframenode (ComfyUI)
+# VideoFrameNode for ComfyUI
 
 ![VideoFrameNode icon](./icon-256.png)
 
-Custom node for ComfyUI that loads an `.mp4` video and outputs two images:
+**Video: First & Last Frame** extracts the first and last frames of an MP4 or an image batch. Both outputs, `FIRST_FRAME` and `LAST_FRAME`, are ComfyUI `IMAGE` values.
 
-- first frame
-- last frame
+## Usage
 
-## What this node does
+1. Add **Video: First & Last Frame** from the **video** category.
+2. Choose a source:
+   - Enter a filename from `ComfyUI/input` or an absolute path to an MP4 in `video`.
+   - Choose an MP4 from the `recent` dropdown. It shows up to 50 MP4s from the top level of the ComfyUI input and output folders. Use **Refresh** to update the list.
+   - Use **Browse…** or drop an MP4 onto the node to upload it to the ComfyUI input folder. An upload replaces an existing file with the same name.
+   - Connect a path string, a dictionary containing a path or filename, or an `IMAGE` batch to `video_in`. A supported wired input takes precedence over `video`.
+3. Connect the frame outputs you need and queue the workflow. For MP4 files, the node also shows a preview of the first frame.
 
-- Reads a video file from `ComfyUI/input` (by filename) or from an absolute path.
-- Optionally accepts a **wired video input** from another node (`video_in`).
-- Outputs two `IMAGE` values: `FIRST_FRAME` and `LAST_FRAME`.
-- Supports choosing the video from a **recent files list** or via **file picker upload** (UI feature).
-- Supports drag & drop of an `.mp4` directly onto the node (UI feature).
+For ComfyUI's native `VIDEO` output, use **Get Video Components** and connect its `images` output to `video_in`.
 
-## How to use
+When submitting a workflow through the API, set `video` to a path on the ComfyUI server (for example, `input/clip.mp4` or `output/clip.mp4`) or wire a supported `video_in`. The file picker, drag and drop, and recent list are browser controls.
 
-1. Add the node **Video: First & Last Frame** to your graph.
-2. Provide the input video using one of these methods:
-    - Connect `video_in` from another node (if it outputs a path/filename, a dict with a path, or an IMAGE batch of frames).
-    - Set `video` to a filename from `ComfyUI/input`.
-    - Set `video` to an absolute path to an `.mp4` file.
-    - (UI) Use the `recent` dropdown or `Browse…` to pick an `.mp4` from your computer (it uploads into `ComfyUI/input`).
-            The `recent` list can include entries like `input/your.mp4` and `output/your.mp4`.
-    - (UI) Drag & drop an `.mp4` onto the node. It will upload into `ComfyUI/input` and set `video` automatically.
-3. Execute the graph.
-4. Use outputs `FIRST_FRAME` and `LAST_FRAME` (both are ComfyUI `IMAGE`).
+## Install with ComfyUI Manager
 
-### Notes (API mode)
+1. Open **Manager** and search for `comfyui-videoframenode`.
+2. Install the node and restart ComfyUI.
 
-- The core node works in API mode, but drag & drop is UI-only (it adds an upload route + frontend JS).
+## Manual installation
 
-## Install via ComfyUI-Manager (recommended)
+1. From ComfyUI's `custom_nodes` directory, run:
 
-1. In the ComfyUI, open **Manager**.
-2. Install this node from the list (search by repo name) or paste the repo URL.
-3. Restart ComfyUI after installation.
+   ```sh
+   git clone https://github.com/esp-dev/comfyui-videoframenode.git
+   ```
 
-## Manual install (advanced users)
+2. If dependencies are missing, install them using the Python interpreter that **runs ComfyUI**. Run one of the following commands from the new `comfyui-videoframenode` directory. Replace the example paths with your actual paths.
 
-The recommended way to install is via ComfyUI-Manager. Manual install is best treated as a fallback.
+   **Windows Portable** (PowerShell, bundled Python)
 
-1. Copy/clone this repo into `ComfyUI/custom_nodes/`, for example:
+   ```powershell
+   & "C:\ComfyUI_windows_portable\python_embeded\python.exe" -m pip install -r requirements.txt
+   ```
 
-    - `ComfyUI/custom_nodes/comfyui-videoframenode` (this repo root is the node folder)
+   **Windows with a virtual environment** (PowerShell)
 
-2. Run commands inside the same Python environment that ComfyUI uses (usually ComfyUI's venv):
+   ```powershell
+   & "C:\ComfyUI\.venv\Scripts\python.exe" -m pip install -r requirements.txt
+   ```
 
-    Windows (PowerShell):
+   **Linux or macOS with a virtual environment**
 
-    - Activate venv (example): `& "D:\\ComfyUI\\.venv\\Scripts\\Activate.ps1"`
+   ```sh
+   "/path/to/ComfyUI/.venv/bin/python" -m pip install -r requirements.txt
+   ```
 
-        Note: Windows often blocks running `.ps1` scripts by default.
+   **If your ComfyUI environment uses uv**, for example a Desktop environment without pip, use `uv pip install` and point it at ComfyUI's existing interpreter:
 
-        - Option A (temporary for this shell only): `Set-ExecutionPolicy -ExecutionPolicy Unrestricted -Scope Process -Force`
-            (This applies only to the current PowerShell process; closing the terminal reverts it.)
-        - Option B: use the `.bat` activator instead (works well from CMD): `"D:\\ComfyUI\\.venv\\Scripts\\activate.bat"`
+   ```powershell
+   uv pip install --python "C:\path\to\ComfyUI\.venv\Scripts\python.exe" -r requirements.txt
+   ```
 
-    - Check what's already installed (recommended before installing anything):
-        - `python -m pip show opencv-python imageio`
-        - `python -c "import cv2, imageio; print('cv2', cv2.__version__, 'imageio', imageio.__version__)"`
-        - (optional) `python -m pip list | findstr /i "opencv imageio torch"`
-
-    - Install deps: `pip install -r requirements.txt`
-
-    Note about `torch` / Pylance
-
-    - This node uses `torch` because ComfyUI images are `torch.Tensor`.
-    - `torch` is usually already included with ComfyUI, so you typically don't need to install it separately.
-    - ComfyUI commonly uses a CUDA-specific build (for example `torch-cu130`). Installing the plain `torch` package via `pip` can override the working CUDA build and break GPU acceleration.
-    - For that reason, `torch` is intentionally commented out in `requirements.txt` in this repo.
-    - If Pylance shows `Import "torch" could not be resolved`, make sure VS Code is using the same environment (venv) as ComfyUI.
+   Add `--dry-run` to preview the dependency changes. If the resolver proposes changing NumPy or other packages used by your ComfyUI setup, review those changes before installing. Avoid `uv sync` and `uv pip sync` for this installation. Syncing can remove packages outside the project's dependency list, including ComfyUI's PyTorch build. The node uses the PyTorch already provided by ComfyUI.
 
 3. Restart ComfyUI.

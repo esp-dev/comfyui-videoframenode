@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 from typing import Any, Optional, Tuple, TYPE_CHECKING
 
 from uuid import uuid4
@@ -247,21 +248,35 @@ try:
         if file is None:
             return web.json_response({"error": "missing file"}, status=400)
 
-        filename = getattr(file, "filename", None) or ""
+        filename = (getattr(file, "filename", None) or "").replace("\\", "/").rsplit("/", 1)[-1]
         if not filename.lower().endswith(".mp4"):
             return web.json_response({"error": "only .mp4 supported"}, status=400)
+        if os.name == "nt" and ":" in filename:
+            return web.json_response({"error": "invalid filename"}, status=400)
 
         input_dir = folder_paths.get_input_directory()
         os.makedirs(input_dir, exist_ok=True)
 
-        safe_name = os.path.basename(filename)
-        save_path = os.path.join(input_dir, safe_name)
+        stem, suffix = filename[:-4], filename[-4:]
+        index = 0
+        while True:
+            name = filename if index == 0 else f"{stem} ({index}){suffix}"
+            save_path = os.path.join(input_dir, name)
+            try:
+                destination = open(save_path, "xb")
+            except FileExistsError:
+                index += 1
+                continue
+            break
 
-        data = file.file.read()
-        with open(save_path, "wb") as f:
-            f.write(data)
+        try:
+            with destination:
+                shutil.copyfileobj(file.file, destination)
+        except OSError:
+            os.remove(save_path)
+            raise
 
-        return web.json_response({"name": safe_name})
+        return web.json_response({"name": name})
 
     @PromptServer.instance.routes.get("/videoframenode/recent")
     async def videoframenode_recent(request):
@@ -321,6 +336,21 @@ class VideoFirstLastFrame:
     RETURN_NAMES = ("FIRST_FRAME", "LAST_FRAME")
     FUNCTION = "load"
     CATEGORY = "video"
+
+    @classmethod
+    def IS_CHANGED(cls, video: str, video_in=None):
+        path_from_in, first_tensor, _ = _extract_video_source(video_in)
+        if first_tensor is not None:
+            return None
+
+        path = _resolve_video_path(path_from_in or video)
+        if path:
+            path = os.path.expandvars(os.path.expanduser(path))
+            try:
+                info = os.stat(path)
+            except OSError:
+                return None
+            return info.st_mtime_ns, info.st_size
 
     def load(self, video: str, video_in=None):
         path_from_in, first_tensor, last_tensor = _extract_video_source(video_in)

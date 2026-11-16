@@ -85,10 +85,14 @@ def _read_first_last_frames(video_path: str) -> Tuple[np.ndarray, np.ndarray]:
         try:
             import imageio.v3 as iio  # type: ignore
 
-            # Read first frame
-            first = iio.imread(video_path, index=0)
-            # Read last frame: imageio supports index=-1 for many backends
-            last = iio.imread(video_path, index=-1)
+            with iio.imopen(video_path, "r") as reader:
+                frames = reader.iter()
+                first = next(frames, None)
+                if first is None:
+                    raise ValueError("Failed to read the first frame")
+                last = first
+                for frame in frames:
+                    last = frame
 
             # Ensure RGB
             first = np.asarray(first)

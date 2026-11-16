@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.1
+
+- Preserve existing MP4 files when uploading a duplicate filename. Refresh cached frames when a file selected in `video` changes.
+- Accept native ComfyUI `VIDEO` on `video_in`, including trimmed video.
+- Fix first and last frame extraction with the ImageIO fallback when OpenCV is unavailable.
+
 ## 1.1.0
 
 - Add optional `video_in` input (accepts path-like inputs, dicts with a path/filename, or IMAGE frame batches).

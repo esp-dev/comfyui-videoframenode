@@ -8,6 +8,13 @@ from uuid import uuid4
 
 import numpy as np
 
+try:
+    from comfy_api.latest import Input
+except ImportError:
+    VideoInput = ()
+else:
+    VideoInput = getattr(Input, "Video", ())
+
 if TYPE_CHECKING:
     import torch
 
@@ -327,7 +334,7 @@ class VideoFirstLastFrame:
             },
             "optional": {
                 # Allows wiring a video-like output from other nodes.
-                # Supported: path string, dict with common keys, or IMAGE batch tensor.
+                # Supports native VIDEO, paths, and IMAGE batches.
                 "video_in": ("*",),
             },
         }
@@ -353,6 +360,12 @@ class VideoFirstLastFrame:
             return info.st_mtime_ns, info.st_size
 
     def load(self, video: str, video_in=None):
+        if isinstance(video_in, VideoInput):
+            images = video_in.get_components().images
+            if len(images) == 0:
+                raise ValueError("The connected video contains no frames")
+            return images[:1].clone(), images[-1:].clone()
+
         path_from_in, first_tensor, last_tensor = _extract_video_source(video_in)
 
         if first_tensor is not None and last_tensor is not None:

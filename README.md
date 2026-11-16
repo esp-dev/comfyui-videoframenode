@@ -11,10 +11,8 @@
    - Enter a filename from `ComfyUI/input` or an absolute path to an MP4 in `video`.
    - Choose an MP4 from the `recent` dropdown. It shows up to 50 MP4s from the top level of the ComfyUI input and output folders. Use **Refresh** to update the list.
    - Use **Browse…** or drop an MP4 onto the node to upload it to the ComfyUI input folder. If the name is already in use, the upload gets a numbered suffix and the node selects the new file.
-   - Connect a path string, a dictionary containing a path or filename, or an `IMAGE` batch to `video_in`. A supported wired input takes precedence over `video`.
+   - Connect a native `VIDEO`, a path string, a dictionary containing a path or filename, or an `IMAGE` batch to `video_in`. A supported wired input takes precedence over `video`.
 3. Connect the frame outputs you need and queue the workflow. For MP4 files, the node also shows a preview of the first frame.
-
-For ComfyUI's native `VIDEO` output, use **Get Video Components** and connect its `images` output to `video_in`.
 
 When submitting a workflow through the API, set `video` to a path on the ComfyUI server (for example, `input/clip.mp4` or `output/clip.mp4`) or wire a supported `video_in`. The file picker, drag and drop, and recent list are browser controls.
 
